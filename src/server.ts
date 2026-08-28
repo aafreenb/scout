@@ -1,5 +1,18 @@
 import Fastify from "fastify";
 import { pool } from "./db";
+import { z } from "zod";
+
+const createBusinessSchema = z.object({
+  name: z.string().min(1),
+  industry: z.string().min(1),
+  city: z.string().min(1),
+});
+
+const updateBusinessSchema = z.object({
+  name: z.string().min(1).optional(),
+  industry: z.string().min(1).optional(),
+  city: z.string().min(1).optional(),
+});
 
 type Business = {
   id: number;
@@ -8,21 +21,13 @@ type Business = {
   city: string;
 };
 
-type CreateBusinessBody = {
-  name: string;
-  industry: string;
-  city: string;
-};
+type CreateBusinessBody = z.infer<typeof createBusinessSchema>;
 
 type BusinessParams = {
   id: string;
 };
 
-type UpdateBusinessBody = {
-  name?: string;
-  industry?: string;
-  city?: string;
-};
+type UpdateBusinessBody = z.infer<typeof updateBusinessSchema>;
 
 const app = Fastify();
 
@@ -63,7 +68,15 @@ app.get<{ Params: BusinessParams }>(
 app.post<{ Body: CreateBusinessBody }>(
   "/businesses",
   async (request, reply) => {
-    const { name, industry, city } = request.body;
+    const validation = createBusinessSchema.safeParse(request.body);
+    if (!validation.success) {
+      return reply.status(400).send({
+        message: "Invalid request body",
+        errors: validation.error.issues,
+      });
+    }
+
+    const { name, industry, city } = validation.data;
 
     const result = await pool.query(
       `
@@ -100,9 +113,16 @@ app.delete<{ Params: BusinessParams }>(
 app.patch<{ Params: BusinessParams; Body: UpdateBusinessBody }>(
   "/businesses/:id",
   async (request, reply) => {
+    const validation = updateBusinessSchema.safeParse(request.body);
+    if (!validation.success) {
+      return reply.status(400).send({
+        message: "Invalid request body",
+        errors: validation.error.issues,
+      });
+    }
     const id = Number(request.params.id);
 
-    const { name, industry, city } = request.body;
+    const { name, industry, city } = validation.data;
 
     const result = await pool.query(
       `
