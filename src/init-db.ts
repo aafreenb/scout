@@ -1,7 +1,7 @@
 import { pool } from "./db";
 
 async function initDatabase() {
-    await pool.query(`
+  await pool.query(`
         CREATE TABLE IF NOT EXISTS businesses (
             id SERIAL PRIMARY KEY,
             name VARCHAR(255) NOT NULL,
@@ -10,12 +10,21 @@ async function initDatabase() {
         );
     `);
 
-    console.log("Database initialized");
+  await pool.query(`
+  CREATE TABLE IF NOT EXISTS websites (
+    id SERIAL PRIMARY KEY,
+    business_id INTEGER NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
+    url TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  );
+`);
 
-    await pool.end();
+  console.log("Database initialized");
+
+  await pool.end();
 }
 
 initDatabase().catch((error) => {
-    console.error("Database initialization failed:", error);
-    process.exit(1);
+  console.error("Database initialization failed:", error);
+  process.exit(1);
 });
